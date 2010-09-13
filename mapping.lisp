@@ -1,11 +1,12 @@
 (defvar *mapping-action-keywords*
   `(:collect :collect-if
      :remove :remove-if
+     :reverse :append
      :funcall
      :action))
 
 (defvar *mapping-action-optional-keywords*
-  `(:if :key :reverse))
+  `(:if :key))
 
 (defvar *mapping-action-optional-sub-keywords*
   `(:else))
@@ -30,7 +31,7 @@
 	      (cons (car actions)
 		    (loop
 		       :for exp = (car rest)
-		       :until (or (null exp) (action-keyword-p exp))
+		       :until (or (null rest) (action-keyword-p exp))
 		       :do (pop rest)
 		       :collect exp))))
 	 (parse-actions rest (cons act acc)))))))
@@ -51,6 +52,10 @@
 	   (mapping-expander rest (remove-if-expander action expr)))
 	  (:funcall
 	   (mapping-expander rest (funcall-expander action expr)))
+	  (:reverse
+	   (mapping-expander rest `(reverse ,expr)))
+	  (:append
+	   (mapping-expander rest `(apply #'append ,expr)))
 	  (:action
 	   (mapping-expander rest (action-expander action expr)))
 	  (error "Invalid mapping action keyword")))))
@@ -108,8 +113,19 @@
 	 ,expr))
       (T `(mapcar ,fn ,expr))))))
 
-
 (defmacro mapping (lst &rest actions)
   (mapping-expander (parse-actions actions nil) lst))
 
-;; (parse-actions '(:collect #'oddp :action #'1+ :key #'car) nil)
+;; example
+(mapping
+ `((1 2) (2 3) (3 4) (4 5))
+ :collect-if #'oddp :key #'car
+ :funcall #'(lambda (lst) (apply #'append lst))
+ :action #'1+ :if #'oddp)
+
+(mapping
+ `(1 2 3 nil 4 5 9 nil)
+ :remove nil)
+
+ 
+	 
